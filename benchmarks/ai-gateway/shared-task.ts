@@ -111,6 +111,15 @@ function probeData(result: PhaseProbeResult): JsonObject {
 export function makeAIGatewayTask(maxTokens: number, timeoutMs: number) {
   return async function aiGatewayTask(ctx: TaskContext<AIGatewayProviderConfig>): Promise<TaskResult> {
     const isCold = ctx.phase === 'cold';
+    if (ctx.participant.prepare) {
+      try {
+        await ctx.participant.prepare();
+      } catch (err) {
+        const message = `${ctx.participant.name} auth setup failed: ${err instanceof Error ? err.message : String(err)}`;
+        ctx.log(message, { level: 'error' });
+        throw new TaskError(message, { code: 'auth_failed' });
+      }
+    }
     const result = isCold
       ? await runColdProbe(ctx.participant, PROMPT, maxTokens, timeoutMs)
       : await runWarmProbe(ctx.participant, PROMPT, maxTokens, timeoutMs);

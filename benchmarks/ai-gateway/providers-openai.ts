@@ -1,6 +1,10 @@
 import { BENCHSDK_RUNNER_VERSION } from '@benchsdk/runner';
 import type { AIGatewayProviderConfig } from './types.js';
+import { DEFAULT_COPILOT_HOST, githubCopilotAuth } from './github-copilot-auth.js';
 import { resolveNeonHost } from './neon-host.js';
+
+// See github-copilot-auth.ts: PAT by default, CTS token when GITHUB_COPILOT_AUTH_MODE=cts.
+const githubCopilot = githubCopilotAuth({ userAgent: `benchsdk-runner/${BENCHSDK_RUNNER_VERSION}` });
 
 /**
  * AI gateway benchmark configurations — OpenAI family.
@@ -242,16 +246,14 @@ export const providers: AIGatewayProviderConfig[] = [
   },
   {
     name: 'github-copilot',
-    requiredEnvVars: ['GITHUB_COPILOT_API_KEY'],
+    requiredEnvVars: githubCopilot.requiredEnvVars,
     wireFormat: 'responses',
     model: 'gpt-5.4-mini',
-    host: 'api.githubcopilot.com',
+    host: DEFAULT_COPILOT_HOST,
     path: '/responses',
-    buildHeaders: () => ({
-      'X-GitHub-Api-Version': '2025-10-01',
-      'User-Agent': `benchsdk-runner/${BENCHSDK_RUNNER_VERSION}`,
-      Authorization: `Bearer ${process.env.GITHUB_COPILOT_API_KEY || ''}`,
-    }),
+    prepare: githubCopilot.prepare,
+    resolveHost: githubCopilot.resolveHost,
+    buildHeaders: githubCopilot.buildHeaders,
   },
   {
     // No-gateway baseline/control. OpenAI's own Responses API — its current

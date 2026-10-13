@@ -279,6 +279,26 @@ npx tsx benchmarks/ai-gateway/ai-gateway-openai.bench.ts --ai-gateway-iterations
 
 Required environment variables (`benchmarks/.env.example`): `OPENROUTER_API_KEY`, `VERCEL_AI_GATEWAY_API_KEY`, `LLM_GATEWAY_API_KEY`, `CONCENTRATE_AI_GATEWAY_API_KEY` are shared across all four families (same gateway accounts, just routed to a different target model each time). `CLOUDFLARE_AI_GATEWAY_ACCOUNT_ID`, `CLOUDFLARE_AI_GATEWAY_GATEWAY_ID`, and `CLOUDFLARE_AI_GATEWAY_TOKEN` are all **required** by every family's Cloudflare entry (the Kimi family's entry uses a different Cloudflare endpoint than the other three, and is the only one where the token is the *sole* auth — no separate per-family key is forwarded there — but all four now require Authenticated Gateway mode, not just Kimi). `NEON_AI_GATEWAY_BASE_URL` and `NEON_AI_GATEWAY_TOKEN` are used across all four families. `NGROK_AI_GATEWAY_API_KEY` is used by all four families (Anthropic, OpenAI, Gemini, and Kimi). `LLMAPI_API_KEY` is used by all four families (Anthropic, OpenAI, Gemini, and Kimi). `PYDANTIC_AI_GATEWAY_API_KEY` is used by the Anthropic and OpenAI families — the Gemini and Kimi families exclude Pydantic. `NOVITA_API_KEY` is used by the Anthropic and Kimi families — OpenAI and Gemini exclude Novita. `RAMP_ROUTER_API_KEY` is used by the Anthropic, OpenAI, and Kimi families — Gemini excludes Ramp Router. `ANTHROPIC_API_KEY` is used by the Anthropic family (Cloudflare's passthrough + `anthropic-direct`); `OPENAI_API_KEY` by the OpenAI family (Cloudflare's passthrough + `openai-direct`); `GEMINI_API_KEY` by the Gemini family (Cloudflare's passthrough + `gemini-direct`); `KIMI_API_KEY` by the Kimi family (`kimi-direct` only — Cloudflare's Kimi entry doesn't need it). Missing credentials cause that participant to be reported as `SKIPPED` rather than failing the run.
 
+### GitHub Copilot: CTS auth mode (opt-in)
+
+By default, the `github-copilot` participant (Anthropic, OpenAI, and Kimi families) sends the fine-grained PAT in `GITHUB_COPILOT_API_KEY` directly to CAPI. Setting `GITHUB_COPILOT_AUTH_MODE=cts` makes it work like VS Code instead (github/copilot-api#39506):
+
+1. It exchanges the `gho_`/`ghu_` user token in `GITHUB_COPILOT_OAUTH_TOKEN` for a short-lived Copilot (CTS) token via `GET api.github.com/copilot_internal/v2/token`. This happens once, before the first probe and outside the measured window.
+2. It sends `Authorization: Bearer <cts token>` with `Copilot-Integration-Id: computesdk-benchmarks`, `Editor-Version`, and `Editor-Plugin-Version`.
+3. If the token response includes `endpoints.api`, requests go to that host. It may differ from the PAT path's `api.githubcopilot.com`; the host is logged.
+4. The token is refreshed in the background before `refresh_in` or `expires_at` (whichever comes first).
+
+`GITHUB_COPILOT_AUTH_MODE` accepts `pat` (default) or `cts`. Any other value fails at startup. In CTS mode, `GITHUB_COPILOT_API_KEY` isn't needed.
+
+A fine-grained PAT can't mint a CTS token (it gets HTTP 403). Only OAuth/GitHub App user tokens from allowlisted apps work. Until a dedicated benchmark app is allowlisted, you can get a token for **local testing only** from VS Code's OAuth app via device flow:
+
+```bash
+export GITHUB_COPILOT_OAUTH_TOKEN="$(npx tsx benchmarks/scripts/github-copilot-device-login.ts)"   # --client-id <id> to override
+GITHUB_COPILOT_AUTH_MODE=cts pnpm run bench:ai-gateway:github-copilot
+```
+
+The default client ID (`01ab8ac9400c4e429b23`, VS Code) is a temporary stand-in. Don't use it in CI, and never commit the token. CI still uses PAT mode.
+
 ## Output
 
 Each family writes to its own results directory under `results/ai-gateway-latency/`: the Anthropic family to `results/ai-gateway-latency/anthropic/YYYY-MM-DD.json` (copied to `results/ai-gateway-latency/anthropic/latest.json`), the OpenAI family to `results/ai-gateway-latency/openai/...`, the Gemini family to `results/ai-gateway-latency/gemini/...`, the Kimi family to `results/ai-gateway-latency/kimi/...`. Every iteration's phase timings, token counts, resolved provider (for OpenRouter/Vercel AI Gateway, see above), and receipt headers are preserved in full — enough to trace any specific measured request back to its provider-side request ID.

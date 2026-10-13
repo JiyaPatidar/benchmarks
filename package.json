@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test:ai-gateway": "tsx --test benchmarks/ai-gateway/*.test.ts",
     "bench": "tsx packages/benchsdk-runner/dist/bin.js run benchmarks/sandbox/tti.bench.ts --iterations 3 --concurrency 3",
     "bench:burst": "tsx packages/benchsdk-runner/dist/bin.js run benchmarks/sandbox/tti.bench.ts --iterations 3 --concurrency 3",
     "bench:sandbox:dax": "tsx packages/benchsdk-runner/dist/bin.js run benchmarks/sandbox/dax.bench.ts",

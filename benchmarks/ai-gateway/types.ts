@@ -16,6 +16,14 @@ export interface AIGatewayProviderConfig {
   /** Auth (and any gateway-specific) headers. Evaluated per-request so env vars can be read lazily. */
   buildHeaders: () => Record<string, string>;
   /**
+   * Optional async setup run before each probe and outside the measured
+   * window (e.g. minting/refreshing a short-lived token that `buildHeaders`
+   * then reads synchronously). Must be cheap once warmed.
+   */
+  prepare?: () => Promise<void>;
+  /** Optional per-request host override (e.g. from a token's `endpoints.api`); falls back to `host`. */
+  resolveHost?: () => string;
+  /**
    * Extra top-level fields merged into the request body, for gateways whose
    * model id is a catalog alias that can resolve to more than one upstream
    * (e.g. OpenRouter's or Vercel AI Gateway's `anthropic/...` can also be

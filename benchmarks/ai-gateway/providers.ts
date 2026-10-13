@@ -1,6 +1,10 @@
 import { BENCHSDK_RUNNER_VERSION } from '@benchsdk/runner';
 import type { AIGatewayProviderConfig } from './types.js';
+import { DEFAULT_COPILOT_HOST, githubCopilotAuth } from './github-copilot-auth.js';
 import { resolveNeonHost } from './neon-host.js';
+
+// See github-copilot-auth.ts: PAT by default, CTS token when GITHUB_COPILOT_AUTH_MODE=cts.
+const githubCopilot = githubCopilotAuth({ userAgent: `benchsdk-runner/${BENCHSDK_RUNNER_VERSION}` });
 
 /**
  * AI gateway benchmark configurations.
@@ -253,15 +257,15 @@ export const providers: AIGatewayProviderConfig[] = [
   },
   {
     name: 'github-copilot',
-    requiredEnvVars: ['GITHUB_COPILOT_API_KEY'],
+    requiredEnvVars: githubCopilot.requiredEnvVars,
     wireFormat: 'anthropic',
     model: 'claude-haiku-4.5',
-    host: 'api.githubcopilot.com',
+    host: DEFAULT_COPILOT_HOST,
     path: '/v1/messages',
+    prepare: githubCopilot.prepare,
+    resolveHost: githubCopilot.resolveHost,
     buildHeaders: () => ({
-      'X-GitHub-Api-Version': '2025-10-01',
-      'User-Agent': `benchsdk-runner/${BENCHSDK_RUNNER_VERSION}`,
-      Authorization: `Bearer ${process.env.GITHUB_COPILOT_API_KEY || ''}`,
+      ...githubCopilot.buildHeaders(),
       'anthropic-version': '2023-06-01',
     }),
   },

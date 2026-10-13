@@ -236,7 +236,7 @@ function sendAndMeasure(
     const contentRe = contentRegexFor(config.wireFormat, config.reasoningCountsAsFirstToken ?? false);
 
     const req = https.request({
-      host: config.host,
+      host: config.resolveHost?.() ?? config.host,
       path: config.path,
       method: 'POST',
       agent,

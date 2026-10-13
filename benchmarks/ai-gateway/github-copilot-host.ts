@@ -9,10 +9,15 @@ export interface CopilotHost {
   headers?: Record<string, string>;
 }
 
-const COPILOT_CLIENT_HEADERS: Record<string, string> = {
-  'User-Agent': 'GitHubCopilotChat/0.32.4',
+/** Editor identification headers VS Code sends to CAPI alongside a CTS token. */
+export const COPILOT_EDITOR_HEADERS: Record<string, string> = {
   'Editor-Version': 'vscode/1.105.1',
   'Editor-Plugin-Version': 'copilot-chat/0.32.4',
+};
+
+const COPILOT_CLIENT_HEADERS: Record<string, string> = {
+  'User-Agent': 'GitHubCopilotChat/0.32.4',
+  ...COPILOT_EDITOR_HEADERS,
   'Copilot-Integration-Id': 'vscode-chat',
   'OpenAI-Intent': 'conversation-edits',
 };
@@ -94,12 +99,16 @@ function hostFromSessionToken(sessionToken: string | undefined): string | undefi
   return match[1].replace(/^proxy\./, 'api.');
 }
 
-interface TokenExchangeResult {
+export interface TokenExchangeResult {
   sessionToken: string;
   apiUrl?: string;
+  /** Unix seconds when the session token expires. */
+  expiresAt?: number;
+  /** Seconds until the client should refresh the session token. */
+  refreshIn?: number;
 }
 
-async function exchangeCopilotToken(
+export async function exchangeCopilotToken(
   token: string,
   log: (message: string) => void,
 ): Promise<TokenExchangeResult | undefined> {
@@ -124,12 +133,14 @@ async function exchangeCopilotToken(
   }
 
   const parsed = parseJson(body) as
-    | { token?: unknown; endpoints?: { api?: string } }
+    | { token?: unknown; endpoints?: { api?: string }; expires_at?: unknown; refresh_in?: unknown }
     | undefined;
   const sessionToken =
     parsed && typeof parsed.token === 'string' ? parsed.token : undefined;
   const apiUrl =
     parsed && typeof parsed.endpoints?.api === 'string' ? parsed.endpoints.api : undefined;
+  const expiresAt = typeof parsed?.expires_at === 'number' ? parsed.expires_at : undefined;
+  const refreshIn = typeof parsed?.refresh_in === 'number' ? parsed.refresh_in : undefined;
 
   if (!sessionToken) {
     log(`Copilot: token exchange returned no token: ${maskSecrets(body.slice(0, 500))}`);
@@ -139,7 +150,7 @@ async function exchangeCopilotToken(
   log(
     `Copilot: token exchange OK (session token ${maskToken(sessionToken)}, endpoints.api=${apiUrl ?? 'unknown'})`,
   );
-  return { sessionToken, apiUrl };
+  return { sessionToken, apiUrl, expiresAt, refreshIn };
 }
 
 async function discoverCopilotApiUrl(
