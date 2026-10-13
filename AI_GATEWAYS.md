@@ -285,7 +285,7 @@ By default, the `github-copilot` participant (Anthropic, OpenAI, and Kimi famili
 
 1. It exchanges the `gho_`/`ghu_` user token in `GITHUB_COPILOT_OAUTH_TOKEN` for a short-lived Copilot (CTS) token via `GET api.github.com/copilot_internal/v2/token`. This happens once, before the first probe and outside the measured window.
 2. It sends `Authorization: Bearer <cts token>` with `Copilot-Integration-Id: computesdk-benchmarks`, `Editor-Version`, and `Editor-Plugin-Version`.
-3. If the token response includes `endpoints.api`, requests go to that host. It may differ from the PAT path's `api.githubcopilot.com`; the host is logged.
+3. Requests go to `GITHUB_COPILOT_API_HOST` if set, otherwise `api.githubcopilot.com` (the same host as the PAT path, so A/B runs compare like for like). The token's `endpoints.api` is logged for reference but not used.
 4. The token is refreshed in the background before `refresh_in` or `expires_at` (whichever comes first).
 
 `GITHUB_COPILOT_AUTH_MODE` accepts `pat` (default) or `cts`. Any other value fails at startup. In CTS mode, `GITHUB_COPILOT_API_KEY` isn't needed.

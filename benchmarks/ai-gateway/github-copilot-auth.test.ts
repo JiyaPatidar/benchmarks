@@ -197,7 +197,7 @@ describe('githubCopilotAuth', () => {
     ]);
   });
 
-  it('cts mode sends the CTS token, editor headers, and endpoints.api host', async () => {
+  it('cts mode sends the CTS token and editor headers, and ignores endpoints.api for the host', async () => {
     const t = fakeTime();
     const manager = new CopilotTokenManager({ exchange: async () => tokenAt(t, 1), now: t.now, schedule: t.schedule });
     const auth = githubCopilotAuth({
@@ -219,18 +219,29 @@ describe('githubCopilotAuth', () => {
       'Editor-Version': 'vscode/1.105.1',
       'Editor-Plugin-Version': 'copilot-chat/0.32.4',
     });
-    assert.equal(auth.resolveHost?.(), 'api.individual.githubcopilot.com');
+    assert.equal(manager.apiHost(), 'api.individual.githubcopilot.com');
+    assert.equal(auth.resolveHost?.(), DEFAULT_COPILOT_HOST);
   });
 
-  it('cts mode falls back to the default host when endpoints.api is absent', async () => {
+  it('cts mode uses GITHUB_COPILOT_API_HOST when set (bare host or URL)', async () => {
     const t = fakeTime();
-    const manager = new CopilotTokenManager({
-      exchange: async () => tokenAt(t, 1, { apiUrl: undefined }),
-      now: t.now,
-      schedule: t.schedule,
+    const manager = new CopilotTokenManager({ exchange: async () => tokenAt(t, 1), now: t.now, schedule: t.schedule });
+    for (const value of ['api.enterprise.githubcopilot.com', 'https://api.enterprise.githubcopilot.com/']) {
+      const auth = githubCopilotAuth({
+        userAgent,
+        env: { GITHUB_COPILOT_AUTH_MODE: 'cts', GITHUB_COPILOT_API_HOST: value },
+        manager,
+      });
+      await auth.prepare?.();
+      assert.equal(auth.resolveHost?.(), 'api.enterprise.githubcopilot.com');
+    }
+  });
+
+  it('pat mode ignores GITHUB_COPILOT_API_HOST', () => {
+    const auth = githubCopilotAuth({
+      userAgent,
+      env: { GITHUB_COPILOT_API_KEY: 'github_pat_x', GITHUB_COPILOT_API_HOST: 'example.com' },
     });
-    const auth = githubCopilotAuth({ userAgent, env: { GITHUB_COPILOT_AUTH_MODE: 'cts' }, manager });
-    await auth.prepare?.();
-    assert.equal(auth.resolveHost?.(), DEFAULT_COPILOT_HOST);
+    assert.equal(auth.resolveHost, undefined);
   });
 });

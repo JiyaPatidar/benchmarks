@@ -9,6 +9,8 @@
  *   skip authnd/authzd on each request (github/copilot-api#39506). The token
  *   is minted once, cached, and refreshed in the background before it
  *   expires. A fine-grained PAT cannot mint a CTS token (HTTP 403).
+ *   Requests go to `GITHUB_COPILOT_API_HOST` if set, else `api.githubcopilot.com`
+ *   (same as the PAT path). The token's `endpoints.api` is only logged.
  */
 import {
   COPILOT_EDITOR_HEADERS,
@@ -103,7 +105,7 @@ export class CopilotTokenManager {
     return this.current.token;
   }
 
-  /** API host from the token's `endpoints.api`, if the CTS response included one. */
+  /** Host from the token's `endpoints.api`, if present. For logging only; not used for routing. */
   apiHost(): string | undefined {
     return this.current?.apiHost;
   }
@@ -139,7 +141,7 @@ export class CopilotTokenManager {
     const byRefreshIn = result.refreshIn !== undefined ? result.refreshIn * 1000 : Infinity;
     const delay = Math.max(1_000, Math.min(byExpiry, byRefreshIn));
     this.log(
-      `CTS token minted (expires_at=${new Date(expiresAtMs).toISOString()}, host=${cached.apiHost ?? DEFAULT_COPILOT_HOST}); next refresh in ${Math.round(delay / 1000)}s`,
+      `CTS token minted (expires_at=${new Date(expiresAtMs).toISOString()}, endpoints.api host=${cached.apiHost ?? 'none'} (logged only, not used)); next refresh in ${Math.round(delay / 1000)}s`,
     );
     this.scheduleRefresh(delay);
     return cached;
@@ -158,6 +160,13 @@ export class CopilotTokenManager {
   }
 }
 
+/** Accepts a bare hostname or a URL; returns just the host. */
+export function normalizeCopilotHost(value: string | undefined): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  return v.includes('://') ? hostFromUrl(v) : v.replace(/\/+$/, '');
+}
+
 function hostFromUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
@@ -174,7 +183,7 @@ export interface GitHubCopilotAuth {
   buildHeaders: () => Record<string, string>;
   /** CTS mode only: mints/refreshes the cached token before a request. */
   prepare?: () => Promise<void>;
-  /** CTS mode only: host from the token's `endpoints.api`, else the default. */
+  /** CTS mode only: `GITHUB_COPILOT_API_HOST` if set, else `api.githubcopilot.com`. */
   resolveHost?: () => string;
 }
 
@@ -219,6 +228,7 @@ export function githubCopilotAuth(opts: GitHubCopilotAuthOptions): GitHubCopilot
   }
 
   const manager = opts.manager ?? getSharedManager(env);
+  const host = normalizeCopilotHost(env.GITHUB_COPILOT_API_HOST) ?? DEFAULT_COPILOT_HOST;
   return {
     mode,
     requiredEnvVars: ['GITHUB_COPILOT_OAUTH_TOKEN'],
@@ -230,6 +240,6 @@ export function githubCopilotAuth(opts: GitHubCopilotAuthOptions): GitHubCopilot
       ...COPILOT_EDITOR_HEADERS,
     }),
     prepare: () => manager.ensure(),
-    resolveHost: () => manager.apiHost() ?? DEFAULT_COPILOT_HOST,
+    resolveHost: () => host,
   };
 }
