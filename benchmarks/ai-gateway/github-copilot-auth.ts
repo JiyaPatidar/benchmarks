@@ -13,7 +13,6 @@
  *   (same as the PAT path). The token's `endpoints.api` is only logged.
  */
 import {
-  COPILOT_EDITOR_HEADERS,
   exchangeCopilotToken,
   maskSecrets,
   type TokenExchangeResult,
@@ -237,7 +236,6 @@ export function githubCopilotAuth(opts: GitHubCopilotAuthOptions): GitHubCopilot
       'User-Agent': opts.userAgent,
       Authorization: `Bearer ${manager.token()}`,
       'Copilot-Integration-Id': CTS_INTEGRATION_ID,
-      ...COPILOT_EDITOR_HEADERS,
     }),
     prepare: () => manager.ensure(),
     resolveHost: () => host,

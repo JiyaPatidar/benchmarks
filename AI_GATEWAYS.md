@@ -284,7 +284,7 @@ Required environment variables (`benchmarks/.env.example`): `OPENROUTER_API_KEY`
 By default, the `github-copilot` participant (Anthropic, OpenAI, and Kimi families) sends the fine-grained PAT in `GITHUB_COPILOT_API_KEY` directly to CAPI. Setting `GITHUB_COPILOT_AUTH_MODE=cts` makes it work like VS Code instead (github/copilot-api#39506):
 
 1. It exchanges the `gho_`/`ghu_` user token in `GITHUB_COPILOT_OAUTH_TOKEN` for a short-lived Copilot (CTS) token via `GET api.github.com/copilot_internal/v2/token`. This happens once, before the first probe and outside the measured window.
-2. It sends `Authorization: Bearer <cts token>` with `Copilot-Integration-Id: computesdk-benchmarks`, `Editor-Version`, and `Editor-Plugin-Version`.
+2. It sends `Authorization: Bearer <cts token>` with `Copilot-Integration-Id: computesdk-benchmarks` and the usual `benchsdk-runner/` User-Agent. No `Editor-*` headers are sent; CAPI picks the integration ID from the header (or the `benchsdk-runner/` UA) before it would ever look at `Editor-Version`.
 3. Requests go to `GITHUB_COPILOT_API_HOST` if set, otherwise `api.githubcopilot.com` (the same host as the PAT path, so A/B runs compare like for like). The token's `endpoints.api` is logged for reference but not used.
 4. The token is refreshed in the background before `refresh_in` or `expires_at` (whichever comes first).
 

@@ -9,15 +9,10 @@ export interface CopilotHost {
   headers?: Record<string, string>;
 }
 
-/** Editor identification headers VS Code sends to CAPI alongside a CTS token. */
-export const COPILOT_EDITOR_HEADERS: Record<string, string> = {
-  'Editor-Version': 'vscode/1.105.1',
-  'Editor-Plugin-Version': 'copilot-chat/0.32.4',
-};
-
 const COPILOT_CLIENT_HEADERS: Record<string, string> = {
   'User-Agent': 'GitHubCopilotChat/0.32.4',
-  ...COPILOT_EDITOR_HEADERS,
+  'Editor-Version': 'vscode/1.105.1',
+  'Editor-Plugin-Version': 'copilot-chat/0.32.4',
   'Copilot-Integration-Id': 'vscode-chat',
   'OpenAI-Intent': 'conversation-edits',
 };

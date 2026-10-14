@@ -197,7 +197,7 @@ describe('githubCopilotAuth', () => {
     ]);
   });
 
-  it('cts mode sends the CTS token and editor headers, and ignores endpoints.api for the host', async () => {
+  it('cts mode sends the CTS token without editor headers, and ignores endpoints.api for the host', async () => {
     const t = fakeTime();
     const manager = new CopilotTokenManager({ exchange: async () => tokenAt(t, 1), now: t.now, schedule: t.schedule });
     const auth = githubCopilotAuth({
@@ -216,8 +216,6 @@ describe('githubCopilotAuth', () => {
       'User-Agent': userAgent,
       Authorization: 'Bearer tid=token-1',
       'Copilot-Integration-Id': 'computesdk-benchmarks',
-      'Editor-Version': 'vscode/1.105.1',
-      'Editor-Plugin-Version': 'copilot-chat/0.32.4',
     });
     assert.equal(manager.apiHost(), 'api.individual.githubcopilot.com');
     assert.equal(auth.resolveHost?.(), DEFAULT_COPILOT_HOST);
