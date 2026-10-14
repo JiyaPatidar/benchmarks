@@ -9,6 +9,9 @@ export interface CopilotHost {
   headers?: Record<string, string>;
 }
 
+// TODO: These headers impersonate VS Code (`Copilot-Integration-Id: vscode-chat`,
+// `GitHubCopilotChat` UA, `Editor-Version`/`Editor-Plugin-Version`). Revisit them
+// once ComputeSDK's own GitHub App exists and is allowlisted for CTS.
 const COPILOT_CLIENT_HEADERS: Record<string, string> = {
   'User-Agent': 'GitHubCopilotChat/0.32.4',
   'Editor-Version': 'vscode/1.105.1',
